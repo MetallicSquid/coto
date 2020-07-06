@@ -1,8 +1,14 @@
 use tokio::runtime::Runtime;
-use reqwest::header;
+use console::{Term, Style};
+use dialoguer::Input;
+
+//Runtime::new().expect("Failed").block_on(coto::get_function());
 
 fn main() {
-    Runtime::new().expect("Failed").block_on(coto::get_function());
+    loop {
+        let user_input = Input::<String>::new().with_prompt(" >>>   ").interact()?;
+        println!("{}", user_input);
+    }
 }
 
 

@@ -186,7 +186,7 @@ pub async fn update_section(token: String, id: 132, json_name:String) -> Result<
     Ok(res)
 }
 
-pub aync fn delete_section(token: String, id: i32) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn delete_section(token: String, id: i32) -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
     headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
 
