@@ -10,15 +10,14 @@ struct Project {
     name: String,
     shared: String,
 }
-
 struct Section {
     id: String,
     project_id: String,
     order: String,
     name: String,
 }
-
 struct Task {
+    id: String,
     section_id: String,
     order: String,
     content: String,
@@ -60,7 +59,6 @@ fn project_overview(token_input: String) {
     // Display the overview
     let cyan = Style::new().cyan();
     let term = Term::stdout();
-    let mut count: i8 = 1;
     term.clear_screen().expect("Could not clear screen.");
     println!("\nPress `Ctrl + C` to end session.");
     println!("\n\nYour projects:\n");
@@ -68,7 +66,6 @@ fn project_overview(token_input: String) {
         println!("\t{}.\tName: {}", &project.count, cyan.apply_to(&project.name));
         println!("\t\tId: {}", cyan.apply_to(&project.id));
         println!("\t\tShared? {}\n", cyan.apply_to(&project.shared));
-        count += 1;
     }
 
     // Display the controls
@@ -173,15 +170,18 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
     let json_tasks: Value = serde_json::from_str(&task_call).unwrap();
 
     let mut task_vec: Vec<Task> = Vec::new();
+    let mut task_counter: i32 = 1;
     for t in 0..task_count {
         task_vec.push(Task {
+            id: json_tasks[t]["id"].to_string(),
             section_id: json_tasks[t]["section_id"].to_string(),
-            order: json_tasks[t]["order"].to_string(),
+            order: task_counter.to_string(),
             content: json_tasks[t]["content"].to_string(),
             priority: json_tasks[t]["priority"].to_string(),
             created: json_tasks[t]["created"].to_string(),
             due: json_tasks[t]["due"]["date"].to_string(),
         });
+        task_counter += 1;
     }
 
     // Display the overview
@@ -190,15 +190,6 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
     term.clear_screen();
     println!("\nPress `Ctrl + C` to end session.");
     println!("\n\nProject - {}:", cyan.apply_to(&project_name));
-    for task in task_vec.iter() {
-        if task.section_id == "0".to_string() {
-                println!("\n\tTask {} - Name: {}.", cyan.apply_to(&task.order), cyan.apply_to(&task.content));
-                println!("\t\t Due date: {}.", cyan.apply_to(&task.due));
-                println!("\t\t Priority: {}.", cyan.apply_to(&task.priority));
-                println!("\t\t Created: {}.", cyan.apply_to(&task.created));
-        }
-
-    }
     for section in section_vec.iter() {
         println!("\n\tSection {} - {}:", cyan.apply_to(&section.order), cyan.apply_to(&section.name));
         for task in task_vec.iter() {
@@ -210,9 +201,18 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
             }
         }
     }
+    for task in task_vec.iter() {
+        if task.section_id == "0".to_string() {
+                println!("\n\tTask {} - Name: {}.", cyan.apply_to(&task.order), cyan.apply_to(&task.content));
+                println!("\t\t Due date: {}.", cyan.apply_to(&task.due));
+                println!("\t\t Priority: {}.", cyan.apply_to(&task.priority));
+                println!("\t\t Created: {}.", cyan.apply_to(&task.created));
+        }
+
+    }
 
     // Display the controls
-    println!("Controls:\n\t`{}#` -> Complete task (e.g. T1 2).\t`{}#` -> Create new task.", cyan.apply_to(&"T"), cyan.apply_to(&"C"));
+    println!("Controls:\n\t`{}#` -> Complete task (e.g. T2).\t`{}#` -> Create new task.", cyan.apply_to(&"T"), cyan.apply_to(&"C"));
     println!("\t`{}#` -> Delete task.\t\t\t`{}#` -> Update task.", cyan.apply_to(&"D"), cyan.apply_to(&"U"));
     println!("\t`{}` -> Go back to projects.\n", cyan.apply_to(&"B"));
 
@@ -223,9 +223,19 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
         .unwrap();
 
     if action.contains("T") && action.len() == 2 {
-        println!("ToDo: Complete task")
-    } else if action.contains("C") && action.len() <= 2 {
-        let section_num = &action[1..];
+        let task_num = &action[1..].parse::<i32>().unwrap();
+        for task in task_vec.iter() {
+            if task_num.to_string() == task.order {
+                Runtime::new().expect("Could not delete task.")
+                    .block_on(coto::close_task(token, &task.id))
+                    .unwrap();
+            }
+        }
+        sect_and_task_overview(project_name, token, id);
+
+    } else if action.contains("C") && action.len() <= 4 {
+        let section_str = &action[1..];
+        let mut section_num: i64 = 0;
         let content: String = Input::new()
             .with_prompt("\nTask content")
             .interact()
@@ -235,44 +245,93 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
             .interact()
             .unwrap();
         let due: String = Input::new()
+            .allow_empty(true)
             .with_prompt("Due date (YYYY-MM-DD)")
             .interact()
             .unwrap();
 
-        match section_num.is_empty() {
-            true => {
+        if section_str.is_empty() == false {
+            section_num = section_str.parse::<i64>().unwrap();
+            for section in section_vec.iter() {
+                if section_num == section.order.parse::<i64>().unwrap() {
+                    let json_data = json!({"content": content,
+                        "project_id": id.parse::<i64>().unwrap(),
+                        "section_id": section.id.parse::<i64>().unwrap(),
+                        "order": 5,
+                        "priority": priority.parse::<i32>().unwrap(),
+                        "due_date": due});
+                    Runtime::new().expect("Could not create new task.")
+                        .block_on(coto::new_task(token, json_data.to_string()))
+                        .unwrap();
+                }
+            }
+        } else {
             let json_data = json!({"content": content,
                 "project_id": id.parse::<i64>().unwrap(),
+                "section_id": 0,
                 "order": 5,
                 "priority": priority.parse::<i32>().unwrap(),
                 "due_date": due});
             Runtime::new().expect("Could not create new task.")
                 .block_on(coto::new_task(token, json_data.to_string()))
                 .unwrap();
-            },
-            false => {
-                for section in section_vec.iter() {
-                    if section_num == section.order {
-                        let sect_id = section.id.to_string();
-                        let json_data = json!({"content": content,
-                            "project_id": id.parse::<i64>().unwrap(),
-                            "section_id": sect_id.parse::<i32>().unwrap(),
-                            "order": 5,
-                            "priority": priority.parse::<i32>().unwrap(),
-                            "due_date": due});
-                        Runtime::new().expect("Could not create new task.")
-                            .block_on(coto::new_task(token, json_data.to_string()))
-                            .unwrap();
-                    }
-                }
-            },
-        };
+        }
         sect_and_task_overview(project_name, token, id);
 
     } else if action.contains("D") && action.len() == 2 {
-        println!("ToDo: Delete task.");
+        let verification: String = Input::new()
+            .with_prompt("\nAre you certain? y/n")
+            .interact()
+            .unwrap();
+
+        let task_num = &action[1..].parse::<i32>().unwrap();
+        for task in task_vec.iter() {
+            if task_num.to_string() == task.order {
+                match &verification.to_lowercase()[..] {
+                    "y" => {
+                        Runtime::new().expect("Could not delete task.")
+                            .block_on(coto::delete_task(token, &task.id))
+                            .unwrap();
+                    },
+                    "n" => { sect_and_task_overview(project_name, token, id); },
+                    _ => { println!("That was not an option.") },
+                }
+            }
+        }
+        sect_and_task_overview(project_name, token, id);
+
     } else if action.contains("U") && action.len() == 2 {
-        println!("ToDo: Update task.");
+        let task_num = &action[1..].parse::<i32>().unwrap();
+        for task in task_vec.iter() {
+            if task_num.to_string() == task.order {
+                let content: String = Input::new()
+                    .with_prompt("\nTask content")
+                    .with_initial_text(&task.content.replace("\"", ""))
+                    .interact()
+                    .unwrap();
+                let priority: String = Input::new()
+                    .with_prompt("Priority (lowest = 1, highest = 4)")
+                    .with_initial_text(&task.priority.replace("\"", ""))
+                    .interact()
+                    .unwrap();
+                let mut due: String = Input::new()
+                    .allow_empty(true)
+                    .with_prompt("Due date (YYYY-MM-DD)")
+                    .with_initial_text(&task.due.replace("\"", ""))
+                    .interact()
+                    .unwrap();
+                if &due[..] == "null" {
+                    due = String::new();
+                }
+                let json_data = json!({"content": content,
+                    "priority": priority.parse::<i32>().unwrap(),
+                    "due_date": due});
+                let res = Runtime::new().expect("Could not create new task.")
+                    .block_on(coto::update_task(token, &task.id, json_data.to_string()))
+                    .unwrap();
+            }
+        }
+        sect_and_task_overview(project_name, token, id);
     } else if action.contains("B") && action.len() == 1 {
         project_overview(token.to_string());
     } else {

@@ -240,7 +240,7 @@ pub async fn new_task(token: &String, json_data: String) -> Result<(), Box<dyn s
     headers.insert("X-Request-Id", uuid.to_string().parse().unwrap());
     headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
 
-    let _res = Client::new()
+    let res = Client::new()
         .post("https://api.todoist.com/rest/v1/tasks")
         .headers(headers)
         .body(json_data)
@@ -252,14 +252,14 @@ pub async fn new_task(token: &String, json_data: String) -> Result<(), Box<dyn s
     Ok(())
 }
 
-pub async fn update_task(token: &String, id: &String, json_data: String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn update_task(token: &String, id: &String, json_data: String) -> Result<std::string::String, Box<dyn std::error::Error>> {
     let uuid = Uuid::new_v4();
     let mut headers = header::HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
     headers.insert("X-Request-Id", uuid.to_string().parse().unwrap());
     headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
 
-    let _res = Client::new()
+    let res = Client::new()
         .post(Url::parse(&format!("https://api.todoist.com/rest/v1/tasks/{}", id)).unwrap())
         .headers(headers)
         .body(json_data)
@@ -268,7 +268,7 @@ pub async fn update_task(token: &String, id: &String, json_data: String) -> Resu
         .text()
         .await?;
 
-    Ok(())
+    Ok(res)
 }
 
 pub async fn close_task(token: &String, id: &String) -> Result<(), Box<dyn std::error::Error>> {
