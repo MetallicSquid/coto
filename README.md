@@ -7,7 +7,8 @@ These are the neccessary things to finish for the 0.1.0 version:
  - [x] Write completion of certain tasks
  - [x] Write deletion of certain tasks
  - [x] Write updating of certain tasks
- - [ ] Write the section functions.
+ - [x] Write the section functions.
+ - [ ] Clean up edge cases and UX.
  - [ ] Properly account for user errors.
  
  That should be all.
