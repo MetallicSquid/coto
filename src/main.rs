@@ -59,6 +59,7 @@ fn project_overview(token_input: String) {
 
     // Display the overview
     let cyan = Style::new().cyan();
+    let bold = Style::new().bold();
     let term = Term::stdout();
     term.clear_screen().expect("Could not clear screen.");
     println!("\nPress `Ctrl + C` to end session.");
@@ -70,8 +71,8 @@ fn project_overview(token_input: String) {
     }
 
     // Display the controls
-    println!("Controls:\n\t`{}#` -> Display project contents (e.g. P3).\t`{}` -> Create new project.", cyan.apply_to(&"P"), cyan.apply_to(&"C"));
-    println!("\t`{}#` -> Delete project.\t\t\t\t`{}#` -> Update project.\n", cyan.apply_to(&"D"), cyan.apply_to(&"U"));
+    println!("Controls:\n\t`{}#` -> Display {}roject contents (e.g. P3).\t`{}` -> {}reate new project.", cyan.apply_to(&"P"), bold.apply_to(&"p"), cyan.apply_to(&"C"), bold.apply_to(&"C"));
+    println!("\t`{}#` -> {}elete project.\t\t\t\t`{}#` -> {}pdate project.\n", cyan.apply_to(&"D"), bold.apply_to(&"D"), cyan.apply_to(&"U"), bold.apply_to(&"U"));
 
     // Wait for the user to make an action
     let action: String = Input::new()
@@ -203,6 +204,7 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
 
     // Display the overview
     let cyan = Style::new().cyan();
+    let bold = Style::new().bold();
     let term = Term::stdout();
     term.clear_screen();
     println!("\nPress `Ctrl + C` to end session.");
@@ -229,9 +231,11 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
     }
 
     // Display the controls
-    println!("Controls:\n\t`{}#` -> Complete task (e.g. T2).\t`{}#` -> Create new task.", cyan.apply_to(&"T"), cyan.apply_to(&"C"));
-    println!("\t`{}#` -> Delete task.\t\t\t`{}#` -> Update task.", cyan.apply_to(&"D"), cyan.apply_to(&"U"));
-    println!("\t`{}` -> Go back to projects.\n", cyan.apply_to(&"B"));
+    println!("Task controls:\n\t`{}#` -> Complete {}ask (e.g. T2).\t`{}#` -> {}reate new task.", cyan.apply_to(&"T"), bold.apply_to(&"t"), cyan.apply_to(&"C"), bold.apply_to(&"C"));
+    println!("\t`{}#` -> {}elete task.\t\t\t`{}#` -> {}pdate task.", cyan.apply_to(&"D"), bold.apply_to(&"D"), cyan.apply_to(&"U"), bold.apply_to(&"U"));
+    println!("Section controls: \n\t`{}` -> Make {}ew section.\t\t`{}#` -> {}emove section.", cyan.apply_to(&"N"), bold.apply_to(&"n"), cyan.apply_to(&"R"), bold.apply_to(&"R"));
+    println!("\t`{}#` -> Update {}ection.\n", cyan.apply_to(&"S"), bold.apply_to(&"s"));
+    println!("\t`{}` -> Go {}ack to projects.\n", cyan.apply_to(&"B"), bold.apply_to(&"b"));
 
     // Wait for the user to make an action
     let action: String = Input::new()
@@ -343,12 +347,65 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
                 let json_data = json!({"content": content,
                     "priority": priority.parse::<i32>().unwrap(),
                     "due_date": due});
-                let res = Runtime::new().expect("Could not create new task.")
+                Runtime::new().expect("Could not update task.")
                     .block_on(coto::update_task(token, &task.id, json_data.to_string()))
                     .unwrap();
             }
         }
         sect_and_task_overview(project_name, token, id);
+    } else if action.contains("N") && action.len() == 1 {
+        let new_name: String = Input::new()
+            .with_prompt("\nSection name")
+            .interact()
+            .unwrap();
+        let name_and_id = json!({"name": &new_name, "project_id": &id.parse::<i64>().unwrap()});
+        Runtime::new().expect("Could not create new section.")
+                .block_on(coto::new_section(token, name_and_id.to_string()))
+                .unwrap();
+        sect_and_task_overview(project_name, token, id);
+
+    } else if action.contains("R") && action.len() == 2 {
+        let verification: String = Input::new()
+            .with_prompt("\nAre you certain? y/n")
+            .interact()
+            .unwrap();
+
+        let section_num = &action[1..].parse::<i32>().unwrap();
+        for section in section_vec.iter() {
+            if section_num.to_string() == section.order {
+                match &verification.to_lowercase()[..] {
+                    "y" => {
+                        Runtime::new().expect("Could not delete section.")
+                            .block_on(coto::delete_section(token, &section.id))
+                            .unwrap();
+                    },
+                    "n" => { sect_and_task_overview(project_name, token, id); },
+                    _ => { println!("That was not an option.") },
+                }
+            }
+        }
+        sect_and_task_overview(project_name, token, id);
+
+    } else if action.contains("S") && action.len() == 2 {
+        let section_num = &action[1..].parse::<i32>().unwrap();
+        for section in section_vec.iter() {
+            if section_num.to_string() == section.order {
+                let name: String = Input::new()
+                    .with_prompt("\nTask content")
+                    .with_initial_text(&section.name.replace("\"", ""))
+                    .interact()
+                    .unwrap();
+                let json_data = json!({"name": &name});
+                println!("{}", json_data.to_string());
+                let res = Runtime::new().expect("Could not update task.")
+                    .block_on(coto::update_task(token, &section.id, json_data.to_string()))
+                    .unwrap();
+                println!("{}", res);
+                thread::sleep(time::Duration::from_secs(5));
+            }
+        }
+        sect_and_task_overview(project_name, token, id);
+
     } else if action.contains("B") && action.len() == 1 {
         project_overview(token.to_string());
     } else {
