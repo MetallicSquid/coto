@@ -20,6 +20,7 @@ struct Task {
     id: String,
     section_id: String,
     order: String,
+    real_order: String,
     content: String,
     priority: String,
     created: String,
@@ -143,6 +144,21 @@ fn project_overview(token_input: String) {
 
 }
 
+fn greatest_task_order(section_id: &String, task_vec: &Vec<Task>) -> i32 {
+    let mut greatest: i32 = 0;
+    for task in task_vec.iter() {
+        if section_id == &task.section_id {
+            if task.real_order != "null" {
+                let current_order: i32 = task.real_order.parse::<i32>().unwrap();
+                if current_order > greatest {
+                    greatest = current_order;
+                }
+            }
+        }
+    }
+    return greatest+1
+}
+
 // ##### Display Sections and Tasks #####
 fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
     // Sections
@@ -180,6 +196,7 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
             priority: json_tasks[t]["priority"].to_string(),
             created: json_tasks[t]["created"].to_string(),
             due: json_tasks[t]["due"]["date"].to_string(),
+            real_order: json_tasks[t]["order"].to_string(),
         });
         task_counter += 1;
     }
@@ -257,7 +274,7 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
                     let json_data = json!({"content": content,
                         "project_id": id.parse::<i64>().unwrap(),
                         "section_id": section.id.parse::<i64>().unwrap(),
-                        "order": 5,
+                        "order": greatest_task_order(&section.id, &task_vec),
                         "priority": priority.parse::<i32>().unwrap(),
                         "due_date": due});
                     Runtime::new().expect("Could not create new task.")
@@ -269,7 +286,7 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
             let json_data = json!({"content": content,
                 "project_id": id.parse::<i64>().unwrap(),
                 "section_id": 0,
-                "order": 5,
+                "order": greatest_task_order(&0.to_string(), &task_vec),
                 "priority": priority.parse::<i32>().unwrap(),
                 "due_date": due});
             Runtime::new().expect("Could not create new task.")
