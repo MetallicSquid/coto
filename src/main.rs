@@ -391,14 +391,14 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
         for section in section_vec.iter() {
             if section_num.to_string() == section.order {
                 let name: String = Input::new()
-                    .with_prompt("\nTask content")
+                    .with_prompt("\nName")
                     .with_initial_text(&section.name.replace("\"", ""))
                     .interact()
                     .unwrap();
                 let json_data = json!({"name": &name});
                 println!("{}", json_data.to_string());
                 let res = Runtime::new().expect("Could not update task.")
-                    .block_on(coto::update_task(token, &section.id, json_data.to_string()))
+                    .block_on(coto::update_section(token, &section.id, json_data.to_string()))
                     .unwrap();
                 println!("{}", res);
                 thread::sleep(time::Duration::from_secs(5));
