@@ -14,7 +14,7 @@ Via cargo:
 cargo install coto
 ```
 ## Screenshot
-![coto example](example/png)
+![coto example](example.png)
 
 ## Usage
 Just type `coto` into your command line and then follow the instructions.
