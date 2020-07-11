@@ -1,8 +1,7 @@
 use tokio::runtime::Runtime;
 use console::{Term, Style};
 use dialoguer::Input;
-use serde_json::{json, Result, Value};
-use std::{thread, time};
+use serde_json::{json, Value};
 
 struct Project {
     count: i32,
@@ -10,12 +9,15 @@ struct Project {
     name: String,
     shared: String,
 }
+
 struct Section {
     id: String,
     project_id: String,
     order: String,
+    real_order: String,
     name: String,
 }
+
 struct Task {
     id: String,
     section_id: String,
@@ -30,7 +32,7 @@ struct Task {
 // ##### Handle token input #####
 fn main() {
     let token_input = Input::<String>::new()
-        .with_prompt("API token")
+        .with_prompt("User API token")
         .interact()
         .expect("Could not collect token.");
 
@@ -139,10 +141,9 @@ fn project_overview(token_input: String) {
         }
 
     } else {
-        println!("That was not one of the options.");
+        project_overview(token_input.to_string());
 
     }
-
 }
 
 fn greatest_task_order(section_id: &String, task_vec: &Vec<Task>) -> i32 {
@@ -170,13 +171,16 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
     let json_sections: Value = serde_json::from_str(&section_call).unwrap();
 
     let mut section_vec: Vec<Section> = Vec::new();
+    let mut section_counter: i32 = 1;
     for s in 0..section_count {
         section_vec.push(Section {
             id: json_sections[s]["id"].to_string(),
             project_id: json_sections[s]["project_id"].to_string(),
-            order: json_sections[s]["order"].to_string(),
+            order: section_counter.to_string(),
+            real_order: json_sections[s]["order"].to_string(),
             name: json_sections[s]["name"].to_string(),
         });
+        section_counter += 1;
     }
 
     // Tasks
@@ -206,7 +210,8 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
     let cyan = Style::new().cyan();
     let bold = Style::new().bold();
     let term = Term::stdout();
-    term.clear_screen();
+    let mut populated: bool = false;
+    term.clear_screen().expect("Could not clear screen.");
     println!("\nPress `Ctrl + C` to end session.");
     println!("\n\nProject - {}:", cyan.apply_to(&project_name));
     for section in section_vec.iter() {
@@ -217,23 +222,31 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
                 println!("\t\t\t Due date: {}.", cyan.apply_to(&task.due));
                 println!("\t\t\t Priority: {}.", cyan.apply_to(&task.priority));
                 println!("\t\t\t Created: {}.", cyan.apply_to(&task.created));
+                if populated == false {
+                    populated = true;
+                }
             }
         }
     }
     for task in task_vec.iter() {
         if task.section_id == "0".to_string() {
-                println!("\n\tTask {} - Name: {}.", cyan.apply_to(&task.order), cyan.apply_to(&task.content));
-                println!("\t\t Due date: {}.", cyan.apply_to(&task.due));
-                println!("\t\t Priority: {}.", cyan.apply_to(&task.priority));
-                println!("\t\t Created: {}.", cyan.apply_to(&task.created));
+            println!("\n\tTask {} - Name: {}.", cyan.apply_to(&task.order), cyan.apply_to(&task.content));
+            println!("\t\t Due date: {}.", cyan.apply_to(&task.due));
+            println!("\t\t Priority: {}.", cyan.apply_to(&task.priority));
+            println!("\t\t Created: {}.", cyan.apply_to(&task.created));
+            if populated == false {
+                populated = true;
+            }
         }
-
+    }
+    if populated == false {
+        println!("{}", bold.apply_to(&"\n\tThis project is empty! Try filling it up."))
     }
 
     // Display the controls
-    println!("Task controls:\n\t`{}#` -> Complete {}ask (e.g. T2).\t`{}#` -> {}reate new task.", cyan.apply_to(&"T"), bold.apply_to(&"t"), cyan.apply_to(&"C"), bold.apply_to(&"C"));
+    println!("\nTask controls:\n\t`{}#` -> Complete {}ask (e.g. T2).\t`{}#` -> {}reate new task.", cyan.apply_to(&"T"), bold.apply_to(&"t"), cyan.apply_to(&"C"), bold.apply_to(&"C"));
     println!("\t`{}#` -> {}elete task.\t\t\t`{}#` -> {}pdate task.", cyan.apply_to(&"D"), bold.apply_to(&"D"), cyan.apply_to(&"U"), bold.apply_to(&"U"));
-    println!("Section controls: \n\t`{}` -> Make {}ew section.\t\t`{}#` -> {}emove section.", cyan.apply_to(&"N"), bold.apply_to(&"n"), cyan.apply_to(&"R"), bold.apply_to(&"R"));
+    println!("\nSection controls: \n\t`{}` -> Make {}ew section.\t\t`{}#` -> {}emove section.", cyan.apply_to(&"N"), bold.apply_to(&"n"), cyan.apply_to(&"R"), bold.apply_to(&"R"));
     println!("\t`{}#` -> Update {}ection.\n", cyan.apply_to(&"S"), bold.apply_to(&"s"));
     println!("\t`{}` -> Go {}ack to projects.\n", cyan.apply_to(&"B"), bold.apply_to(&"b"));
 
@@ -256,7 +269,6 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
 
     } else if action.contains("C") && action.len() <= 4 {
         let section_str = &action[1..];
-        let mut section_num: i64 = 0;
         let content: String = Input::new()
             .with_prompt("\nTask content")
             .interact()
@@ -272,7 +284,7 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
             .unwrap();
 
         if section_str.is_empty() == false {
-            section_num = section_str.parse::<i64>().unwrap();
+            let section_num: i64 = section_str.parse::<i64>().unwrap();
             for section in section_vec.iter() {
                 if section_num == section.order.parse::<i64>().unwrap() {
                     let json_data = json!({"content": content,
@@ -396,12 +408,9 @@ fn sect_and_task_overview(project_name: &String, token: &String, id: &String) {
                     .interact()
                     .unwrap();
                 let json_data = json!({"name": &name});
-                println!("{}", json_data.to_string());
-                let res = Runtime::new().expect("Could not update task.")
+                Runtime::new().expect("Could not update section.")
                     .block_on(coto::update_section(token, &section.id, json_data.to_string()))
                     .unwrap();
-                println!("{}", res);
-                thread::sleep(time::Duration::from_secs(5));
             }
         }
         sect_and_task_overview(project_name, token, id);

@@ -169,12 +169,12 @@ pub async fn new_section(token: &String, json_name_and_id: String) -> Result<(),
 }
 
 
-pub async fn update_section(token: &String, id: &String, json_name: String) -> Result<std::string::String, Box<dyn std::error::Error>> {
+pub async fn update_section(token: &String, id: &String, json_name: String) -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
     headers.insert("Content-Type", "application/json".parse().unwrap());
     headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
 
-    let res = Client::new()
+    let _res = Client::new()
         .post(Url::parse(&format!("https://api.todoist.com/rest/v1/sections/{}", id)).unwrap())
         .headers(headers)
         .body(json_name)
@@ -183,7 +183,7 @@ pub async fn update_section(token: &String, id: &String, json_name: String) -> R
         .text()
         .await?;
 
-    Ok(res)
+    Ok(())
 }
 
 pub async fn delete_section(token: &String, id: &String) -> Result<(), Box<dyn std::error::Error>> {
@@ -240,7 +240,7 @@ pub async fn new_task(token: &String, json_data: String) -> Result<(), Box<dyn s
     headers.insert("X-Request-Id", uuid.to_string().parse().unwrap());
     headers.insert("Authorization", format!("Bearer {}", token).parse().unwrap());
 
-    let res = Client::new()
+    let _res = Client::new()
         .post("https://api.todoist.com/rest/v1/tasks")
         .headers(headers)
         .body(json_data)
