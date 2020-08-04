@@ -1,13 +1,12 @@
 # coto
 A **co**mmand line **To**doist client written in Rust.
-
-### More details about usage can be found [here](https://gcmacneil.com/coto.html)
+More details about the project can be found [here](https://gcmacneil.com/coto.html).
 
 ## Features
  * Fast.
  * Simple.
  * Low CPU intensity.
- 
+
 ## Installation
 Via cargo:
 ```
