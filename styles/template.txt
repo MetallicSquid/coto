@@ -1,0 +1,15 @@
+shadow = false
+borders = "outset"
+
+[colors]
+
+background = "main bar colour"
+view = "background colour"
+
+primary = "main text colour"
+secondary = "icon colour"
+tertiary = "sub-text colour"
+
+title_primary = "main bar colour"
+highlight = "search bar colour"
+highlight_inactive = "sub-text colour"

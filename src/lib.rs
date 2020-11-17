@@ -1,7 +1,13 @@
+// ###### Todoist REST API Functions #####
+
+// These are the functions that are used
+// to make queries to the Todoist REST API
+
+
 use reqwest::{header, Client, Url};
 use uuid::Uuid;
 
-// ########## Projects ##########
+// ##### Projects #####
 
 pub async fn get_all_projects(token: &String) -> Result<std::string::String, Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
@@ -87,7 +93,7 @@ pub async fn delete_project(token: &String, id: &String) -> Result<(), Box<dyn s
     Ok(())
 }
 
-// ########## Collaborators ##########
+// ##### Collaborators #####
 
 pub async fn get_collaborators(token: &String, id: &String) -> Result<std::string::String, Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
@@ -104,7 +110,7 @@ pub async fn get_collaborators(token: &String, id: &String) -> Result<std::strin
     Ok(res)
 }
 
-// ########## Sections ##########
+// ##### Sections #####
 
 pub async fn get_all_sections(token: &String) -> Result<std::string::String, Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
@@ -201,7 +207,7 @@ pub async fn delete_section(token: &String, id: &String) -> Result<(), Box<dyn s
     Ok(())
 }
 
-// ########## Tasks ##########
+// ##### Tasks #####
 
 pub async fn get_all_tasks(token: &String) -> Result<std::string::String, Box<dyn std::error::Error>> {
     let mut headers = header::HeaderMap::new();
@@ -316,11 +322,8 @@ pub async fn delete_task(token: &String, id: &String) -> Result<(), Box<dyn std:
     Ok(())
 }
 
-// ########## Comments ##########
-
+// ##### Comments #####
 // ToDo
 
-// ########## Labels ##########
-
+// ##### Labels #####
 // ToDo
-

@@ -1,0 +1,15 @@
+shadow = false
+borders = "outset"
+
+[colors]
+
+background = "#FF9000"
+view = "#FFFFFF"
+
+primary = "#202020"
+secondary = "#808080"
+tertiary = "#777777"
+
+title_primary = "#FF9000"
+highlight = "#FFA633"
+highlight_inactive = "#777777"

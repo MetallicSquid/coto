@@ -16,7 +16,13 @@ reqwest = "0.10.6"
 tokio = "0.2.21"
 async-std = "1.6.2"
 uuid = { version = "0.8.1", features = ["v4"] }
-console = "0.11.3"
-dialoguer = "0.6.2"
-device_query = "0.2.4"
+serde = { version = "1.0.117", features = ["derive"] }
+serde_derive = "1.0.117"
 serde_json = "1.0.56"
+confy = "0.4.0"
+structopt = "0.3.17"
+cursive = "0.15.0"
+
+[[bin]]
+name = "coto"
+required-features = ["cursive/toml"]
