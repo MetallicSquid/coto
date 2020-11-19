@@ -11,7 +11,7 @@ use reqwest::{header, Client};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    todoist_key: String,
+    pub todoist_key: String,
 }
 
 /// Generate default config file
@@ -49,7 +49,7 @@ async fn validate_key(key: &String) -> Result<bool, Box<dyn std::error::Error>> 
     }
 }
 
-pub fn config_setup() -> Result<std::string::String, Box<dyn std::error::Error>> {
+pub fn config_setup() -> Result<(), Box<dyn std::error::Error>> {
     let config: Config = confy::load("coto").expect("Could not load config");
 
     if config.todoist_key == "" {
@@ -77,9 +77,8 @@ pub fn config_setup() -> Result<std::string::String, Box<dyn std::error::Error>>
 
         confy::store("coto", updated).expect("Could not store config");
     }
-    let config: Config = confy::load("coto").expect("Could not load config");
 
-    Ok(config.todoist_key)
+    Ok(())
 }
 
 pub fn remove_key() {
