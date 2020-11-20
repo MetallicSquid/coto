@@ -3,11 +3,11 @@ use tokio::runtime::Runtime;
 use structopt::StructOpt;
 use cursive::Cursive;
 use cursive::align::HAlign;
-use cursive::views::{Dialog, DummyView, EditView, LinearLayout, SelectView, TextView};
+use cursive::views::{Dialog, EditView, LinearLayout, SelectView, TextView, OnEventView, Button};
 use cursive::traits::*;
 
 mod config;
-mod ui;
+mod query;
 
 #[derive(StructOpt)]
 struct Cli {
@@ -16,39 +16,39 @@ struct Cli {
     remove: bool,
 }
 
-struct Project {
-    count: i32,
-    id: String,
-    name: String,
-    shared: String,
+pub struct Project {
+    pub count: i32,
+    pub id: String,
+    pub name: String,
+    pub shared: String,
 }
 
-struct Section {
-    id: String,
-    project_id: String,
-    order: i32,
-    real_order: String,
-    name: String,
+pub struct Section {
+    pub id: String,
+    pub project_id: String,
+    pub order: i32,
+    pub real_order: String,
+    pub name: String,
 }
 
-struct Task {
-    id: String,
-    section_id: String,
-    order: i32,
-    real_order: String,
-    content: String,
-    priority: String,
-    created: String,
-    due: String,
+pub struct Task {
+    pub id: String,
+    pub section_id: String,
+    pub order: i32,
+    pub real_order: String,
+    pub content: String,
+    pub priority: String,
+    pub created: String,
+    pub due: String,
 }
 
-fn project_overview() {
+fn project_overview(ui: &mut Cursive) {
     let conf: config::Config = confy::load("coto").expect("Could not load config");
     let key: String = conf.todoist_key;
 
     // Gather 'Projects'
     let project_call = Runtime::new().expect("Could not query projects")
-        .block_on(coto::get_all_projects(&key))
+        .block_on(query::get_all_projects(&key))
         .unwrap();
 
     let project_count = project_call.matches("}").count();
@@ -64,31 +64,73 @@ fn project_overview() {
     }
 
     // Display the overview
-    let mut ui = cursive::default();
+    ui.pop_layer();
     ui.load_toml(include_str!("../styles/original.toml")).unwrap();
 
     let mut select = SelectView::new();
     for project in project_vec.iter() {
-        select.add_item(project.name.to_string(), project.id.to_string())
+        select.add_item(project.name.to_string(), project.id.to_string());
     }
     select.set_on_submit(task_overview);
 
     // Display controls
     let controls = "[C]reate project\n[D]elete project\n[U]pdate project\n[S]ettings\n[Q]uit";
 
+    // Control callbacks
+    let callbacks = OnEventView::new(select)
+        // Create Project
+        .on_event('c', |ui| {
+            fn ok(ui: &mut Cursive, name: &str) {
+                let conf_call: config::Config = confy::load("coto").expect("Could not load config");
+                let key_call: String = conf_call.todoist_key;
+                let json_name = json!({"name": name}).to_string();
+                Runtime::new().expect("Could not create new project")
+                    .block_on(query::new_project(&key_call, json_name))
+                    .unwrap();
+                project_overview(ui);
+            }
+
+            ui.pop_layer();
+            ui.add_layer(Dialog::new()
+                .content(EditView::new().on_submit(ok))
+                .title("New project name"));
+        })
+        // Delete Project
+        .on_event('d', move |ui| {
+            fn ok(ui: &mut Cursive, project_id: &str) {
+                let conf_call: config::Config = confy::load("coto").expect("Could not load config");
+                let key_call: String = conf_call.todoist_key;
+                Runtime::new().expect("Could not delete project")
+                    .block_on(query::delete_project(&key_call, &project_id.to_string()))
+                    .unwrap();
+                project_overview(ui);
+            }
+
+            ui.pop_layer();
+            let mut sub_select = SelectView::new();
+            for project in project_vec.iter() {
+                sub_select.add_item(project.name.to_string(), project.id.to_string());
+            }
+            sub_select.set_on_submit(ok);
+            let delete_callback = OnEventView::new(sub_select)
+                .on_event('b', project_overview)
+                .on_event('q', |ui| ui.quit());
+
+            ui.add_layer(Dialog::around(LinearLayout::vertical()
+                    .child(TextView::new("Be careful, once it's gone - it's gone.\nYou can go [B]ack or [Q]uit if you want. "))
+                    .child(delete_callback))
+                .title("Project to delete"));
+
+        })
+        .on_event('u', |ui| {})
+        .on_event('s', |ui| {})
+        .on_event('q', |ui| ui.quit());
+
     ui.add_layer(Dialog::around(LinearLayout::horizontal()
-            .child(select)
+            .child(callbacks)
             .child(TextView::new(controls)))
         .title("Projects")
         .h_align(HAlign::Center));
-
-    // Control callbacks
-
-    // ** Create **
-    // ** Delete **
-    // ** Update **
-    // ** Settings **
-    // ** Quit **
 
     ui.run();
 }
@@ -99,7 +141,7 @@ fn task_overview(ui: &mut Cursive, id: &String) {
 
     // Gather 'Sections' and 'Tasks'
     let section_call = Runtime::new().expect("Could not query sections")
-        .block_on(coto::get_project_sections(&key, id))
+        .block_on(query::get_project_sections(&key, id))
         .unwrap();
     let section_count = section_call.matches("}").count();
     let section_json: Value = serde_json::from_str(&section_call).unwrap();
@@ -118,7 +160,7 @@ fn task_overview(ui: &mut Cursive, id: &String) {
     }
 
     let task_call = Runtime::new().expect("Could not query tasks")
-        .block_on(coto::get_all_tasks(&key))
+        .block_on(query::get_all_tasks(&key))
         .unwrap();
     let task_count = task_call.matches("}").count();
     let task_json: Value = serde_json::from_str(&task_call).unwrap();
@@ -158,27 +200,30 @@ fn task_overview(ui: &mut Cursive, id: &String) {
     // Display controls
     let controls = "Complete [T]ask\n[C]reate Task/Section\n[D]elete Task/Section\n[U]pdate Task/Section\nGo [B]ack\n[S]ettings";
 
+    let callbacks = OnEventView::new(column)
+        .on_event('t', |ui| {})
+        .on_event('c', |ui| {})
+        .on_event('d', |ui| {})
+        .on_event('u', |ui| {})
+        .on_event('b', project_overview)
+        .on_event('s', |ui| {});
+
     ui.add_layer(Dialog::around(LinearLayout::horizontal()
-            .child(column)
+            .child(callbacks)
             .child(TextView::new(controls)))
         .title("Tasks")
         .h_align(HAlign::Center));
-
-    // Control callbacks
-
-    // ** Complete **
-    // ** Create **
-    // ** Delete **
-    // ** Update **
-    // ** Back **
-    // ** Settings **
 }
+
+fn pass(ui: &mut Cursive) {}
 
 fn main() {
     // Config setup
     if Cli::from_args().remove == true {
         config::remove_key();
     }
+    config::config_setup();
 
-    project_overview();
+    let mut ui = cursive::default();
+    project_overview(&mut ui);
 }

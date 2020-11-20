@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 use tokio::runtime::Runtime;
 use reqwest::{header, Client};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     pub todoist_key: String,
 }
