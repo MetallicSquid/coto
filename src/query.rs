@@ -6,12 +6,6 @@
 
 use reqwest::{header, Client, Url};
 use uuid::Uuid;
-use serde_json::{json, Value};
-use tokio::runtime::Runtime;
-use structopt::StructOpt;
-use cursive::Cursive;
-use cursive::align::HAlign;
-use cursive::views::{Dialog, DummyView, EditView, LinearLayout, SelectView, TextView};
 
 // ##### Projects #####
 
